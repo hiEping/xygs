@@ -7,7 +7,7 @@ import { Map, Marker } from 'react-amap';
 import ProCard from '@ant-design/pro-card';
 import HikWebCtrl from "@/pages/Shapan/components/hikWebCtrl";
 import {listPois, listMapSettings} from "@/services/xygs/api";
-import { getKmName, valueEnumDirection } from './components/util';
+import getKmName, { valueEnumDirection } from './components/util';
 
 
 export default ()=>{
@@ -38,10 +38,6 @@ export default ()=>{
   const [drawerPoint, setDrawerPoint] = useState<[number , number ]>();
   const [drawerZoom, setDrawerZoom] = useState<number>();
   const [poiData, setPoiData] = useState<API.Poi[]>([]);
-  const poiChanged = (data: API.Poi[]) => {
-    console.log(data);
-    setPoiData(data);
-  }
   // 地图关注点POI
   const [focusPoi, setFocusPoi] = useState<API.Poi[]>([]);
   // 地图样式切换
@@ -86,6 +82,7 @@ export default ()=>{
       );
       listMapSettings().then(
         (s) => {
+          if (s[0])
           setZoomLevel(s[0].zoom);
           setCenterPoint([s[0].centerLng, s[0].centerLat]);
           setDrawerZoom(s[0].zoom);
@@ -149,7 +146,7 @@ export default ()=>{
                 events={markerEvents}
                 extData={poi}
                 label={{
-                  content: (poi.place=='road' ? getKmName(poi.km) + valueEnumDirection[poi.direction]['text'] : poi.name),
+                  content: (poi.place=='road' && poi.direction && poi.km ? getKmName(poi.km) + valueEnumDirection[poi.direction]['text'] : poi.name),
                   offset: {x:25,y:5},
                 }}
               />

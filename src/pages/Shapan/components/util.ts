@@ -19,9 +19,8 @@ export const valueEnumType = {
 
 
 // @ts-ignore
-export const getKmName: string = (kmValue: number) => {
+export default (kmValue: number) => {
   const str = kmValue.toString();
-  // @ts-ignore
-  const [origin, kWord, mWord] = str.match(/(\d+)\.(\d{3})/);
-  return 'K'+kWord+'+'+mWord;
+  const words: string[] | null = str.match(/(\d+)\.(\d{3})/);
+  return (words === null ? 'K0+000' : 'K'+words[1]+'+'+words[2]);
 }
