@@ -5,6 +5,7 @@ import { history, Link } from 'umi';
 import RightContent from '@/components/RightContent';
 import { currentUser as queryCurrentUser } from './services/ant-design-pro/api';
 import { BookOutlined, LinkOutlined } from '@ant-design/icons';
+import {request} from "umi";
 
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
@@ -21,7 +22,26 @@ export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
   currentUser?: API.CurrentUser;
   fetchUserInfo?: () => Promise<API.CurrentUser | undefined>;
+  backendToken?: string;
+  getToken?: () => string;
 }> {
+  const queryToken = async () => {
+    try{
+      const token = await request(
+        '/api/api-token-auth/',
+        {
+          method:'post',
+          data:{
+            username:'admin',
+            password:'admin123',
+          }
+        }
+      )
+      return token.token;
+    }catch (err){
+      return 'fail';
+    }
+  }
   const fetchUserInfo = async () => {
     try {
       const msg = await queryCurrentUser();
@@ -31,6 +51,7 @@ export async function getInitialState(): Promise<{
     }
     return undefined;
   };
+  const fullToken = 'Token ' + await queryToken();
   // 如果是登录页面，不执行
   if (history.location.pathname !== loginPath) {
     const currentUser = await fetchUserInfo();
@@ -38,11 +59,13 @@ export async function getInitialState(): Promise<{
       fetchUserInfo,
       currentUser,
       settings: {},
+      backendToken: fullToken,
     };
   }
   return {
     fetchUserInfo,
     settings: {},
+    backendToken: fullToken,
   };
 }
 

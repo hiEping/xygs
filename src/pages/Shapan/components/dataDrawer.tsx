@@ -2,7 +2,7 @@ import { Drawer, Space, Table, message } from 'antd';
 import ProTable from '@ant-design/pro-table';
 import type { ProColumns } from '@ant-design/pro-table';
 import {listPois} from "@/services/xygs/api";
-import {getKmName, valueEnumDirection, valueEnumPlace, valueEnumType } from './util';
+import {default as getKmName, valueEnumDirection, valueEnumPlace, valueEnumType } from './util';
 
 
 const DataDrawer = (props: any) => {
@@ -41,21 +41,24 @@ const DataDrawer = (props: any) => {
       valueEnum: valueEnumDirection,
       initialValue:'all',
     },
-    // {
-    //   title: '用户名',
-    //   dataIndex: 'username',
-    //   hideInTable: true,
-    // },
-    // {
-    //   title: '密码',
-    //   dataIndex: 'password',
-    //   hideInTable: true,
-    // },
-    // {
-    //   title: 'IP',
-    //   dataIndex: 'ip',
-    //   hideInTable: true,
-    // },
+    {
+      title: '用户名',
+      dataIndex: 'username',
+      hideInTable: true,
+      hideInSearch: true,
+    },
+    {
+      title: '密码',
+      dataIndex: 'password',
+      hideInTable: true,
+      hideInSearch: true,
+    },
+    {
+      title: 'IP',
+      dataIndex: 'ip',
+      hideInTable: true,
+      hideInSearch: true,
+    },
     {
       title: '操作',
       key: 'option',

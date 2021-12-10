@@ -1,6 +1,6 @@
 // https://umijs.org/config/
 import { defineConfig } from 'umi';
-// import { join } from 'path';
+import { join } from 'path';
 
 import defaultSettings from './defaultSettings';
 // import proxy from './proxy';
@@ -36,6 +36,7 @@ export default defineConfig({
   },
   // umi routes: https://umijs.org/docs/routing
   routes,
+  // proxy,
   // Theme for antd: https://ant.design/docs/react/customize-theme-cn
   theme: {
     'primary-color': defaultSettings.primaryColor,
@@ -73,7 +74,9 @@ export default defineConfig({
     // },
     {
       requestLibPath: "import {request} from 'umi'",
-      schemaPath: 'http://127.0.0.1:8000/api/openapi/?format=openapi-json',
+      // 这是在线版本
+      // schemaPath: 'http://127.0.0.1:8000/api/openapi/?format=openapi-json',
+      schemaPath: join(__dirname, 'xygsApi.json'),
       mock: false,
       projectName:'xygs',
     }

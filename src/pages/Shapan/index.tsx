@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import {useEffect, useState } from 'react';
 import { GlobalOutlined, LeftOutlined, RightOutlined, TableOutlined } from '@ant-design/icons';
 import { Layout, Menu, Space, message, Modal } from 'antd';
 import SettingDrawer from './components/settingsDrawer';
@@ -6,11 +6,13 @@ import DataDrawer from "@/pages/Shapan/components/dataDrawer";
 import { Map, Marker } from 'react-amap';
 import ProCard from '@ant-design/pro-card';
 import HikWebCtrl from "@/pages/Shapan/components/hikWebCtrl";
-import {listPois, listMapSettings} from "@/services/xygs/api";
+import {listPois, listMapSettings, partialUpdateMapSettings} from "@/services/xygs/api";
 import getKmName, { valueEnumDirection } from './components/util';
+import {useModel} from "umi";
 
-
+let count = 0;
 export default ()=>{
+  const { initialState } = useModel('@@initialState');
   const { Sider, Content } = Layout;
   // 布局内容高度值
   const [contentHeight, setContentHeight] = useState<number>(window.innerHeight-48);
@@ -25,32 +27,69 @@ export default ()=>{
   // 侧面版-地图设置
   const [settingDrawerVisible, setSettingDrawerVisible] = useState<boolean>(false);
   const showSettingDrawer = () => { setSettingDrawerVisible(true) }
-  const closeSettingDrawer = () => { setSettingDrawerVisible(false) }
   // 侧面版-数据源
   const [dataDrawerVisible, setDataDrawerVisible] = useState<boolean>(false);
   const showDataDrawer = () => { setDataDrawerVisible(true) }
   const closeDataDrawer = () => { setDataDrawerVisible(false) }
 
   // 地图
-  const [centerPoint, setCenterPoint] = useState<[number , number ] >();                            // [114.143621,32.199812]
-  const [styleString, setStyleString] = useState<string>('normal');             // 'amap://styles/5228dc9ed756d11492490a95ae04ea3f'
-  const [zoomLevel, setZoomLevel] = useState<number>();                                                               // 10
-  const [drawerPoint, setDrawerPoint] = useState<[number , number ]>();
+  const [centerPoint, setCenterPoint] = useState<[number , number ] >([114.143621,32.199812]);                          // [114.143621,32.199812]
+  const [styleString, setStyleString] = useState<string>('amap://styles/5228dc9ed756d11492490a95ae04ea3f');             // 'amap://styles/5228dc9ed756d11492490a95ae04ea3f'
+  const [zoomLevel, setZoomLevel] = useState<number>(10);                                                               // 10
   const [drawerZoom, setDrawerZoom] = useState<number>();
+  const [drawerPoint, setDrawerPoint] = useState<[number , number ]>([0,0]);
   const [poiData, setPoiData] = useState<API.Poi[]>([]);
   // 地图关注点POI
   const [focusPoi, setFocusPoi] = useState<API.Poi[]>([]);
-  // 地图样式切换
-  const onStyleChange = (v: string) => {
-    setStyleString(v);
-    message.success('切换地图样式')
-  }
+  useEffect(
+    ()=>{
+      count++;
+      // 获取map默认参数
+      listMapSettings().then(
+        (li) => {
+          if (li[0]) {
+            const ss = li[0];
+            if (ss.zoom) {
+              console.log('setZoom',count);
+              setZoomLevel(ss.zoom);
+              setDrawerZoom(ss.zoom);
+            }
+            if (ss.centerLng && ss.centerLat) {
+              console.log('setCenter',count);
+              setCenterPoint([ss.centerLng, ss.centerLat]);
+              setDrawerPoint([ss.centerLng, ss.centerLat]);
+            }
+            if (ss.mapStyle) {
+              console.log('setMapStyle',count)
+              setStyleString(ss.mapStyle);
+            }
+          }
+        }
+      ).catch(
+        err => {
+          message.error('获取地图参数出错: ' + err.message);
+        }
+      );
+      listPois().then(
+        (poi) => {
+          console.log('setPoiData',count);
+          setPoiData(poi);
+        }
+      ).catch(
+        err => {
+          message.error('获取poi数据出错: ' + err.meesage)
+        }
+      );
+      return(()=>{console.log('effect return: ',count)})
+    },
+    []
+  )
 
   // 点击数据列表的行-操作-定位并播放
   const locateAndPlay = (p: API.Poi[]) => {
-    if (1 == p.length) {
+    if (1 == p.length && p[0].lng && p[0].lat) {
       setZoomLevel(16);
-      setCenterPoint([p[0].lng, p[0].lat]);
+      setCenterPoint([ p[0].lng, p[0].lat ]);
     };
     setFocusPoi(p);
     setModalVisible(true);
@@ -65,67 +104,65 @@ export default ()=>{
     },
   }
 
-  //  地图事件
-  const mapEvents = {
-    created: (map) => {
-      map.on(
-        'moveend',() => {
-          setDrawerPoint([map.getCenter().getLng(), map.getCenter().getLat()]);
-          console.log(map.getCenter().getLng(), map.getCenter().getLat());
-        }
-      );
-      map.on(
-        'zoomend', () => {
-          setDrawerZoom(map.getZoom());
-          console.log(map.getZoom());
-        }
-      );
-      listMapSettings().then(
-        (s) => {
-          if (s[0])
-          setZoomLevel(s[0].zoom);
-          setCenterPoint([s[0].centerLng, s[0].centerLat]);
-          setDrawerZoom(s[0].zoom);
-          setDrawerPoint([s[0].centerLng, s[0].centerLat]);
-          setStyleString(s[0].mapStyle);
-        }
-      )
-    },
-    complete: () => {
-      // 获取poi
-      listPois().then(
-        (data) => {
-          if (data.length > 0 ) {
-            setPoiData(data);
-            message.success('获取POI数据成功');
-          }
-        }
-      ).catch(
-        (err) => {
-          message.error('获取POI数据出错: '+ err.message);
-        }
-      );
-    },
-  }
-
   // 保存地图默认样式
-  const saveDefaultMapStyle = (styleName: string) => {
-
+  const saveDefaultMapStyle = () => {
+    partialUpdateMapSettings(
+      {id:'1'},
+      {mapStyle:styleString},
+      {headers: {
+          Authorization: initialState.backendToken
+        }}
+    ).then(
+      (obj) => {
+        message.success('设置成功!');
+        console.log(obj);
+      }
+    ).catch(
+      err => message.error('设置失败了!')
+    )
   }
 
-  // 保存地图默认中心点
-  const saveDefaultMapCenter = (lng: number, lat: number) => {
-
+  // 当前地图中心点设为初始值
+  const saveDefaultMapCenter = () => {
+    if (!drawerPoint) {
+      message.warning('没有获取到当前地图中心点');
+      return
+    }
+    partialUpdateMapSettings(
+      {id:'1'},
+      {centerLng:drawerPoint[0],centerLat:drawerPoint[1]},
+      {headers: {
+          Authorization: initialState.backendToken
+        }}
+    ).then(
+      (obj) => {
+        message.success('设置成功!');
+        console.log(obj);
+      }
+    ).catch(
+      err => message.error('设置失败了!')
+    )
   }
 
   // 保存地图默认缩放层级
-  const saveDefaultMapZoom = (zoom: number) => {
-
-  }
-
-  // 获取地图默认参数
-  const getMapSettings = async () => {
-    return await listMapSettings();
+  const saveDefaultMapZoom = () => {
+    if (!drawerZoom) {
+      message.warning('没有获取到当前地图缩放层级');
+    }
+    partialUpdateMapSettings(
+      {id:'1'},
+      {zoom:drawerZoom},
+      {headers: {
+        Authorization: initialState.backendToken
+        }}
+    ).then(
+      (obj) => {
+        message.success('设置成功!');
+        console.log(obj);
+      }
+    ).catch(
+      err => message.error('设置失败了!')
+    )
   }
 
   return(
@@ -133,10 +170,28 @@ export default ()=>{
       <Content id='container' style={{height: contentHeight}}>
         <Map
           amapkey='16f674831bb5523bd7369df3182af025'
+          version='1.4.15'
           mapStyle={styleString}
-          center={centerPoint}
           zoom={zoomLevel}
-          events={mapEvents}
+          center={centerPoint}
+          events={{
+            'created': (map) => {
+              map.on(
+                'moveend',
+                () => {
+                  setDrawerPoint([map.getCenter().getLng(), map.getCenter().getLat()]);
+                  // console.log(map.getCenter().getLng(), map.getCenter().getLat());
+                }
+              )
+              map.on(
+                'zoomend',
+                () => {
+                  setDrawerZoom(map.getZoom());
+                  // console.log(map.getZoom());
+                }
+              )
+            },
+          }}
         >
           {poiData.map(
             (poi, idx)=> (
@@ -188,11 +243,25 @@ export default ()=>{
         </Menu>
         <SettingDrawer
           visible={settingDrawerVisible}
-          onClose={closeSettingDrawer}
-          onChange={onStyleChange}
+          onClose={()=> {
+            setSettingDrawerVisible(false)
+          }}
+          onChange={(v: string)=> {
+            setStyleString(v);
+            message.success('切换地图样式')
+          }}
           mapStyle={styleString}
           mapCenter={drawerPoint}
           mapZoom={drawerZoom}
+          setDefaultStyle={()=>{
+            saveDefaultMapStyle()
+          }}
+          setDefaultCenter={()=>{
+            saveDefaultMapCenter()
+          }}
+          setDefaultZoom={()=>{
+            saveDefaultMapZoom()
+          }}
         />
         <DataDrawer
           opacity={modalVisible ? 0.1 : 0.95}
